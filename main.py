@@ -1,4 +1,5 @@
 import healthcare_spark_analysis
 
 if __name__ == '__main__':
-    healthcare_spark_analysis.get_data()
+    healthcare_instance = healthcare_spark_analysis.Healthcare()
+    healthcare_instance.get_data("train_data.csv")
