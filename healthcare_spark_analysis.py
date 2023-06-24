@@ -35,7 +35,8 @@ class Healthcare:
 
     def get_distinct_values(self, column_name):
         assert self.healthcare_is_present()
-        return self.healthcare_data.select(column_name).distinct().collect()
+        datas = self.healthcare_data.select(column_name).distinct().collect()
+        return [datas[i][0] for i in range(len(datas))]
 
     def get_max(self, column_name):
         assert self.healthcare_is_present()
