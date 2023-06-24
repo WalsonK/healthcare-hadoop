@@ -34,6 +34,20 @@ class Healthcare:
         self.healthcare_data = self.spark_session.read.csv(self.path + filename, schema=file_schema, header=True)
 
     def get_distinct_values(self, column_name):
-        if self.healthcare_data is None:
-            raise AttributeError("Healthcare_data undefined")
+        assert self.healthcare_is_present()
         return self.healthcare_data.select(column_name).distinct().collect()
+
+    def get_max(self, column_name):
+        assert self.healthcare_is_present()
+        return self.healthcare_data.select(column_name).agg({column_name: "max"}).collect()[0][0]
+
+    def get_min(self, column_name):
+        assert self.healthcare_is_present()
+        return self.healthcare_data.select(column_name).agg({column_name: "min"}).collect()[0][0]
+
+    def get_mean(self, column_name):
+        assert self.healthcare_is_present()
+        return self.healthcare_data.select(column_name).agg({column_name: "mean"}).collect()[0][0]
+
+    def healthcare_is_present(self):
+        return self.healthcare_data is not None
