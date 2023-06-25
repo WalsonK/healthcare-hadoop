@@ -1,6 +1,10 @@
 import pyspark
 from pyspark.sql import SparkSession
-from pyspark.sql.types import StructType
+from pyspark.sql.types import StructType, ArrayType
+
+from pyspark.sql.functions import udf
+from pyspark.sql.types import IntegerType
+from pyspark.sql.functions import col, expr
 
 
 class Healthcare:
@@ -33,9 +37,9 @@ class Healthcare:
 
         self.healthcare_data = self.spark_session.read.csv(self.path + filename, schema=file_schema, header=True)
 
-    def get_distinct_values(self, column_name):
+    def get_distinct_values(self, column_name, datas):
         assert self.healthcare_is_present()
-        datas = self.healthcare_data.select(column_name).distinct().collect()
+        datas = datas.select(column_name).distinct().collect()
         return [datas[i][0] for i in range(len(datas))]
 
     def get_max(self, column_name):
@@ -52,3 +56,59 @@ class Healthcare:
 
     def healthcare_is_present(self):
         return self.healthcare_data is not None
+
+    def get_column_by_hospital(self, hospital_code, column_name):
+        assert self.healthcare_is_present()
+        return self.get_hospital_informations(hospital_code).select(column_name)
+
+    def get_hospital_informations(self, hospital_code):
+        assert self.healthcare_is_present()
+        return self.healthcare_data.filter(self.healthcare_data.Hospital_code == hospital_code)
+
+    def get_distinct_values_by_hospital(self, hospital_code, column_name):
+        assert self.healthcare_is_present()
+        datas = self.get_column_by_hospital(hospital_code, column_name)
+        return self.get_distinct_values(column_name, datas)
+
+    def get_min_by_column_in_hospital(self, hospital_code, column_name):
+        assert self.healthcare_is_present()
+        datas = self.get_column_by_hospital(hospital_code, column_name)
+        return datas.agg({column_name: "min"}).collect()[0][0]
+
+    def get_max_by_column_in_hospital(self, hospital_code, column_name):
+        assert self.healthcare_is_present()
+        datas = self.get_column_by_hospital(hospital_code, column_name)
+        return datas.agg({column_name: "max"}).collect()[0][0]
+
+    def get_mean_by_column_in_hospital(self, hospital_code, column_name):
+        assert self.healthcare_is_present()
+        datas = self.get_column_by_hospital(hospital_code, column_name)
+        return datas.agg({column_name: "mean"}).collect()[0][0]
+
+    def get_stats_by_column(self, hospital_code, column_name):
+        assert self.healthcare_is_present()
+        datas = self.get_column_by_hospital(hospital_code, column_name).collect()
+        dictionary = {}
+        for key in datas:
+            dictionary[key[0]] = dictionary.get(key[0], 0) + 1
+
+        return dict(sorted(dictionary.items(), key=lambda item: item[1], reverse=True))
+
+    def get_stay_by_admission(self, hospital_code):
+        assert self.healthcare_is_present()
+        datas = self.get_hospital_informations(hospital_code)
+
+        def transform_stay(value):
+            start, end = value.split('-')
+            return list(range(int(start), int(end) + 1))
+
+        transform_stay_udf = udf(transform_stay, IntegerType())
+
+        df = datas.withColumn('Stay', transform_stay_udf(col('Stay')))
+
+        median_by_admission = df.groupBy('Type of Admission').agg(
+            expr('percentile_approx(Stay, 0.5)').alias('Median_Stay'))
+
+        median_by_admission.show()
+
+        return datas.groupBy("Stay")
