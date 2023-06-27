@@ -4,7 +4,7 @@ from pyspark.sql.types import StructType, ArrayType
 
 from pyspark.sql.functions import udf
 from pyspark.sql.types import IntegerType
-from pyspark.sql.functions import col, expr
+from pyspark.sql.functions import col, expr, split
 
 
 class Healthcare:
@@ -44,15 +44,15 @@ class Healthcare:
 
     def get_max(self, column_name):
         assert self.healthcare_is_present()
-        return self.healthcare_data.select(column_name).agg({column_name: "max"}).collect()[0][0]
+        return self.healthcare_data.select(column_name).agg({column_name: "max"}).show()
 
     def get_min(self, column_name):
         assert self.healthcare_is_present()
-        return self.healthcare_data.select(column_name).agg({column_name: "min"}).collect()[0][0]
+        return self.healthcare_data.select(column_name).agg({column_name: "min"}).show()
 
     def get_mean(self, column_name):
         assert self.healthcare_is_present()
-        return self.healthcare_data.select(column_name).agg({column_name: "mean"}).collect()[0][0]
+        return self.healthcare_data.select(column_name).agg({column_name: "mean"}).show()
 
     def healthcare_is_present(self):
         return self.healthcare_data is not None
@@ -73,17 +73,17 @@ class Healthcare:
     def get_min_by_column_in_hospital(self, hospital_code, column_name):
         assert self.healthcare_is_present()
         datas = self.get_column_by_hospital(hospital_code, column_name)
-        return datas.agg({column_name: "min"}).collect()[0][0]
+        return datas.agg({column_name: "min"}).show()
 
     def get_max_by_column_in_hospital(self, hospital_code, column_name):
         assert self.healthcare_is_present()
         datas = self.get_column_by_hospital(hospital_code, column_name)
-        return datas.agg({column_name: "max"}).collect()[0][0]
+        return datas.agg({column_name: "max"}).show()
 
     def get_mean_by_column_in_hospital(self, hospital_code, column_name):
         assert self.healthcare_is_present()
         datas = self.get_column_by_hospital(hospital_code, column_name)
-        return datas.agg({column_name: "mean"}).collect()[0][0]
+        return datas.agg({column_name: "mean"}).show()
 
     def get_stats_by_column(self, hospital_code, column_name):
         assert self.healthcare_is_present()
@@ -112,3 +112,20 @@ class Healthcare:
         median_by_admission.show()
 
         return datas.groupBy("Stay")
+
+    def get_column_types(self):
+        assert self.healthcare_is_present()
+        return self.healthcare_data.dtypes
+
+    def get_stats_by_hospital(self, hospital_code):
+        assert self.healthcare_is_present()
+        hospital = self.get_hospital_informations(hospital_code)
+
+    def add_columns_based_on_split(self, column, sep='-', cast_type='integer'):
+        assert self.healthcare_is_present()
+        splits = split(self.healthcare_data[column], sep)
+        self.healthcare_data = self.healthcare_data.withColumn(f'{column}Min', splits.getItem(0))
+        self.healthcare_data = self.healthcare_data.withColumn(f'{column}Min', col(f'{column}Min').cast(cast_type))
+        self.healthcare_data = self.healthcare_data.withColumn(f'{column}Max', splits.getItem(1))
+        self.healthcare_data = self.healthcare_data.withColumn(f'{column}Max', col(f'{column}Max').cast(cast_type))
+        self.healthcare_data = self.healthcare_data.drop(column)
