@@ -39,7 +39,7 @@ class Healthcare:
 
     def get_distinct_values(self, column_name, datas):
         assert self.healthcare_is_present()
-        datas = datas.select(column_name).distinct().collect()
+        datas = datas.select(column_name).distinct()
         return [datas[i][0] for i in range(len(datas))]
 
     def get_max(self, column_name):
@@ -87,7 +87,7 @@ class Healthcare:
 
     def get_stats_by_column(self, hospital_code, column_name):
         assert self.healthcare_is_present()
-        datas = self.get_column_by_hospital(hospital_code, column_name).collect()
+        datas = self.get_column_by_hospital(hospital_code, column_name)
         dictionary = {}
         for key in datas:
             dictionary[key[0]] = dictionary.get(key[0], 0) + 1
@@ -128,4 +128,5 @@ class Healthcare:
         self.healthcare_data = self.healthcare_data.withColumn(f'{column}Min', col(f'{column}Min').cast(cast_type))
         self.healthcare_data = self.healthcare_data.withColumn(f'{column}Max', splits.getItem(1))
         self.healthcare_data = self.healthcare_data.withColumn(f'{column}Max', col(f'{column}Max').cast(cast_type))
+        self.healthcare_data = self.healthcare_data.withColumn(f'{column}Mean', (col(f'{column}Min') + col(f'{column}Max')) / 2.0)
         self.healthcare_data = self.healthcare_data.drop(column)
